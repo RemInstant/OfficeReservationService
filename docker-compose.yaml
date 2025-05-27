@@ -1,0 +1,16 @@
+services:
+
+  server:
+    image: reminstant:office-reservation-server
+    container_name: office-reservation-server
+    environment:
+      SPRING_PROFILES_ACTIVE: "container"
+    ports:
+      - '48080:8080'
+
+  postgres:
+    image: postgres:latest
+    container_name: office-reservation-postgres
+    environment:
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: app_db

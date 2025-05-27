@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:45432/app_db
+    username: postgres
+    password: admin
+  docker:
+    compose:
+      file: 'docker-compose-ide.yaml'

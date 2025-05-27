@@ -1,0 +1,10 @@
+services:
+
+  postgres:
+    image: postgres:latest
+    container_name: office-reservation-postgres
+    environment:
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: app_db
+    ports:
+      - '45432:5432'
