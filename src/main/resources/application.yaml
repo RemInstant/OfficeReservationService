@@ -1,0 +1,18 @@
+spring:
+  data:
+    redis:
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 4
+        shutdown-timeout: 100ms
+      timeout: 5000ms
+
+token:
+  signing:
+    key: u9lsXL5gbjdOmm61oMv3vIcpa+YamfzA7QNNmIMurA11KRHBTRbGIo9kndtp/hSnVotaIEDkXyahEUMmrEjavA==
+
+api:
+  sign-up: '/api/auth/sign-up'
+  sign-in: '/api/auth/sign-in'

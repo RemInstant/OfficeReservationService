@@ -7,4 +7,27 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: app_db
     ports:
-      - '45432:5432'
+      - '48081:5432'
+    volumes:
+      - ide_pg_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    container_name: office-reservation-redis
+    ports:
+      - "48082:6379"
+    volumes:
+      - ide_redis_data:/data
+
+  mongo:
+    image: mongo:latest
+    container_name: office-reservation-mongo
+    ports:
+      - "48083:27017"
+    volumes:
+      - ide_mongo_data:/data
+
+volumes:
+  ide_pg_data:
+  ide_redis_data:
+  ide_mongo_data:

@@ -1,8 +1,20 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:45432/app_db
+    url: jdbc:postgresql://localhost:48081/app_db
     username: postgres
     password: admin
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  data:
+    redis:
+      host: localhost
+      port: 48082
+    mongodb:
+      host: localhost
+      port: 48083
   docker:
     compose:
       file: 'docker-compose-ide.yaml'
+server:
+  port: 48080
