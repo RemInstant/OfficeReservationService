@@ -3,6 +3,8 @@ package org.reminstant.config;
 import org.reminstant.filter.CustomAuthenticationEntryPoint;
 import org.reminstant.filter.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.error.DefaultErrorAttributes;
+import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -31,9 +33,8 @@ public class SecurityConfig {
         .authorizeHttpRequests(c -> c
             .requestMatchers(HttpMethod.POST, signUpEndpoint).permitAll()
             .requestMatchers(HttpMethod.POST, signInEndpoint).permitAll()
-            .requestMatchers(HttpMethod.POST, "/api/test-redis").permitAll()
-            .requestMatchers(HttpMethod.POST, "/api/test-mongo").permitAll()
-            .anyRequest().authenticated())
+            .requestMatchers(HttpMethod.POST, "/api/**").permitAll()
+            .anyRequest().permitAll())
         .addFilterBefore(jwtAuthenticationFilter, BasicAuthenticationFilter.class)
         .build();
 

@@ -8,6 +8,9 @@ spring:
           min-idle: 4
         shutdown-timeout: 100ms
       timeout: 5000ms
+    mongodb:
+      database: reservation
+      auto-index-creation: true
 
 token:
   signing:
