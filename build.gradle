@@ -76,7 +76,7 @@ tasks.register('stopContainers') {
     doLast {
         exec {
             workingDir project.rootDir
-            commandLine 'docker', 'compose', 'down'
+            commandLine 'docker', 'compose', 'stop'
         }
     }
 }
