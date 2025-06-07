@@ -3,6 +3,7 @@ package org.reminstant.controller.advice;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.reminstant.exception.RoomNotFoundException;
 import org.reminstant.exception.UnavailableReservationException;
 import org.springframework.context.annotation.Primary;
@@ -20,7 +21,8 @@ import java.net.URI;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
-@Primary
+@Slf4j
+//@Primary
 @ControllerAdvice
 public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
 
@@ -41,6 +43,23 @@ public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
     String path = request.getDescription(false).replace("uri=", "");
 
     return buildResponse(status, headers, URI.create(path), builder.toString());
+  }
+
+  @ExceptionHandler(ConstraintViolationException.class)
+  public ResponseEntity<Object> handleConstraintViolationException(ConstraintViolationException ex,
+                                                                   WebRequest request) {
+    StringBuilder builder = new StringBuilder();
+    for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+      String location = violation.getPropertyPath().toString();
+      location = location.substring(location.indexOf(".") + 1);
+      location = location.substring(location.indexOf(".") + 1);
+      builder.append(location).append(": ").append(violation.getMessage()).append("; ");
+    }
+    builder.delete(builder.length() - 2, builder.length());
+
+    String path = request.getDescription(false).replace("uri=", "");
+
+    return buildResponse(HttpStatus.BAD_REQUEST, null, URI.create(path), builder.toString());
   }
 
   @ExceptionHandler(DuplicateKeyException.class)
@@ -71,6 +90,7 @@ public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
     return buildResponse(HttpStatus.BAD_REQUEST, null,
         URI.create(request.getRequestURI()), ex.getMessage());
   }
+
 
 
   private ResponseEntity<Object> buildResponse(HttpStatusCode status, HttpHeaders headers,

@@ -1,4 +1,4 @@
-package org.reminstant.dto.http;
+package org.reminstant.dto.http.response;
 
 public record ReservationIdDto(
     String reservationId) {

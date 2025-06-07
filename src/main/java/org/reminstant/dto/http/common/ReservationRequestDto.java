@@ -1,4 +1,4 @@
-package org.reminstant.dto.http;
+package org.reminstant.dto.http.common;
 
 import jakarta.validation.constraints.*;
 import org.hibernate.validator.constraints.Length;
