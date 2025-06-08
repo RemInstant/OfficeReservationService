@@ -29,5 +29,4 @@ public class RoomDayRangeAvailability {
     this.roomTitle = roomTitle;
     this.availability = new ArrayList<>();
   }
-
 }

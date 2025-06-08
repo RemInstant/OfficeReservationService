@@ -68,4 +68,8 @@ public class AppUserService implements UserDetailsService {
         .filter(user -> passwordEncoder.matches(password, user.getPassword()))
         .isPresent();
   }
+
+  public AppUser getUser(String username) {
+    return appUserRepository.getAppUserByUsername(username).orElse(null);
+  }
 }

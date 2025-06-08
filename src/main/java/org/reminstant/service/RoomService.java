@@ -5,13 +5,15 @@ import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import lombok.extern.slf4j.Slf4j;
 import org.reminstant.dto.http.common.RoomDto;
+import org.reminstant.dto.http.response.ReservationParamsDto;
 import org.reminstant.dto.http.response.RoomDayRangeAvailabilityDto;
+import org.reminstant.dto.http.response.RoomsDayAvailabilityDto;
 import org.reminstant.dto.mongo.DayHourMasksDto;
+import org.reminstant.dto.mongo.RoomHourMasksDto;
+import org.reminstant.exception.ReservationNotFoundException;
 import org.reminstant.exception.RoomNotFoundException;
 import org.reminstant.exception.UnavailableReservationException;
-import org.reminstant.model.Reservation;
-import org.reminstant.model.Room;
-import org.reminstant.model.RoomDayRangeAvailability;
+import org.reminstant.model.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
@@ -32,18 +34,25 @@ public class RoomService {
   private static final String RESERVATIONS_COLLECTION = "reservations";
 
   private final MongoTemplate mongoTemplate;
+  private final AppUserService userService;
 
   private final DateTimeFormatter isoDateFormatter;
 
-  public RoomService(MongoTemplate mongoTemplate) {
+  public RoomService(MongoTemplate mongoTemplate, AppUserService userService) {
     this.mongoTemplate = mongoTemplate;
+    this.userService = userService;
     this.isoDateFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd");
   }
 
 
-  public List<String> getRooms() {
+  public List<Room> getRooms() {
+    return mongoTemplate.find(new Query(), Room.class, ROOMS_COLLECTION);
+  }
+
+  public List<String> getRoomTitles() {
     Query query = new Query();
     query.fields().include("roomTitle").exclude("_id");
+
     List<Room> rooms = mongoTemplate.find(query, Room.class, ROOMS_COLLECTION);
 
     return rooms.stream().map(Room::getRoomTitle).toList();
@@ -92,14 +101,27 @@ public class RoomService {
 
   public RoomDayRangeAvailability getRoomAvailabilityPerDay(String roomTitle, String startStringDate,
                                                             int dayCount) {
+    OffsetDateTime now = OffsetDateTime.now();
     if (startStringDate == null) {
-      startStringDate = OffsetDateTime.now().format(isoDateFormatter);
+      startStringDate = now.format(isoDateFormatter);
     }
 
     OffsetDateTime startDate = OffsetDateTime.parse(startStringDate + "T00:00:00Z");
     OffsetDateTime endDate = startDate.plus(Duration.ofDays(dayCount));
     Room room = getRoom(roomTitle);
     var roomAvailability = new RoomDayRangeAvailability(room.getId(), roomTitle);
+
+    if (startDate.plus(Duration.ofDays(1)).isBefore(now)) {
+      String newStringStartDate = now.format(isoDateFormatter);
+      startDate = OffsetDateTime.parse(newStringStartDate + "T00:00:00Z");
+    }
+    if (endDate.isAfter(now.plus(Duration.ofDays(31)))) {
+      String newStringEndDate = now.plus(Duration.ofDays(31)).format(isoDateFormatter);
+      endDate = OffsetDateTime.parse(newStringEndDate + "T00:00:00Z");
+    }
+    if (endDate.isBefore(startDate)) {
+      return roomAvailability;
+    }
 
     Aggregation agg = Aggregation.newAggregation(
         Aggregation.match(Criteria
@@ -116,7 +138,7 @@ public class RoomService {
     Map<OffsetDateTime, Integer> reservationMasks = HashMap.newHashMap(dayCount);
     for (DayHourMasksDto dto : aggResult.getMappedResults()) {
       if (dto.getDate() == null || dto.getMasks() == null) {
-        log.warn("Null date or masks in aggregation result (roomTitle={}, startDate={}, endDate={}",
+        log.warn("Null date or masks in aggregation result (roomTitle={}, startDate={}, endDate={})",
             roomTitle, startDate.format(isoDateFormatter), endDate.format(isoDateFormatter));
         continue;
       }
@@ -125,9 +147,15 @@ public class RoomService {
     }
 
     for (OffsetDateTime date = startDate; date.isBefore(endDate); date = date.plus(Duration.ofDays(1))) {
+      int passedHoursMask = 0;
+      if (date.isBefore(OffsetDateTime.now())) {
+        for (int hour = 0; hour <= OffsetDateTime.now().getHour(); ++hour) {
+          passedHoursMask |= 1 << hour;
+        }
+      }
       int roomMask = getRoomMask(room, date);
       int reservationMask = reservationMasks.getOrDefault(date, 0);
-      int availableMask = ~(roomMask | reservationMask);
+      int availableMask = ~(roomMask | reservationMask | passedHoursMask);
       var avail = new RoomDayRangeAvailability.Availability(date, availableMask);
       roomAvailability.getAvailability().add(avail);
     }
@@ -135,12 +163,103 @@ public class RoomService {
     return roomAvailability;
   }
 
-  public String reserveRoom(String roomTitle, String dateString, int startHour, int endHour)
+  public RoomsDayAvailability getRoomsAvailabilityByDay(String stringDate) {
+    Objects.requireNonNull(stringDate, "stringDate cannot be null");
+
+    OffsetDateTime date = OffsetDateTime.parse(stringDate + "T00:00:00Z");
+    List<Room> rooms = getRooms();
+    int passedHoursMask = 0;
+    var roomAvailability = new RoomsDayAvailability(date);
+
+    if (date.plus(Duration.ofDays(1)).isBefore(OffsetDateTime.now())) {
+      return roomAvailability;
+    }
+    if (date.isBefore(OffsetDateTime.now())) {
+      for (int hour = 0; hour <= OffsetDateTime.now().getHour(); ++hour) {
+        passedHoursMask |= 1 << hour;
+      }
+    }
+    if (date.isAfter(OffsetDateTime.now().plus(Duration.ofDays(30)))) {
+      return roomAvailability;
+    }
+
+    Aggregation agg = Aggregation.newAggregation(
+        Aggregation.match(Criteria
+            .where("date").is(date)),
+        Aggregation.group("roomId")
+            .push("reservationMask").as("masks"),
+        Aggregation.project()
+            .and("_id").as("roomId")
+            .and("masks").as("masks"));
+    AggregationResults<RoomHourMasksDto> aggResult = mongoTemplate
+        .aggregate(agg, RESERVATIONS_COLLECTION, RoomHourMasksDto.class);
+
+    Map<String, Integer> reservationMasks = HashMap.newHashMap(rooms.size());
+    for (RoomHourMasksDto dto : aggResult.getMappedResults()) {
+      if (dto.getRoomId() == null || dto.getMasks() == null) {
+        log.warn("Null roomId or masks in aggregation result (date={}", date);
+        continue;
+      }
+      int reservationMask = dto.getMasks().stream().reduce(0, (a, b) -> a | b);
+      reservationMasks.put(dto.getRoomId(), reservationMask);
+    }
+
+    for (Room room : rooms) {
+      int roomMask = getRoomMask(room, date);
+      int reservationMask = reservationMasks.getOrDefault(room.getId(), 0);
+      int availableMask = ~(roomMask | reservationMask | passedHoursMask);
+      var avail = new RoomsDayAvailability.Availability(room.getId(), room.getRoomTitle(), availableMask);
+      roomAvailability.getAvailability().add(avail);
+    }
+
+    return roomAvailability;
+  }
+
+  public List<String> getActualReservationIds(String username) {
+    AppUser user = userService.getUser(username);
+    Long userId = user == null ? null : user.getId();
+    OffsetDateTime today = OffsetDateTime.parse(
+        OffsetDateTime.now().format(isoDateFormatter)  + "T00:00:00Z");
+
+    Query query = new Query(Criteria
+        .where("userId").is(userId)
+        .and("date").gte(today));
+    query.fields().include("_id");
+    List<Reservation> reservations = mongoTemplate.find(query, Reservation.class, RESERVATIONS_COLLECTION);
+
+    return reservations.stream().map(Reservation::getId).toList();
+  }
+
+  public Reservation getReservationById(String username, String id) {
+    AppUser user = userService.getUser(username);
+    Long userId = user == null ? null : user.getId();
+
+    Query query = new Query(Criteria
+        .where("userId").is(userId)
+        .and("_id").is(id));
+    List<Reservation> reservations = mongoTemplate.find(query, Reservation.class, RESERVATIONS_COLLECTION);
+    Optional<Reservation> reservation = reservations.stream().findFirst();
+
+    if (reservation.isEmpty()) {
+      throw new ReservationNotFoundException(id);
+    }
+
+    return reservation.get();
+  }
+
+  public String reserveRoom(String username, String roomTitle, String dateString,
+                            int startHour, int endHour)
       throws DateTimeParseException, RoomNotFoundException, UnavailableReservationException {
     OffsetDateTime date = OffsetDateTime.parse(dateString + "T00:00:00Z");
     int reservationMask = convertHourRangeToMask(startHour, endHour);
     Room room = getRoom(roomTitle);
     int roomMask = getRoomMask(room, date);
+    AppUser user = userService.getUser(username);
+    Long userId = user == null ? null : user.getId();
+
+    if (date.isAfter(OffsetDateTime.now().plus(Duration.ofDays(30)))) {
+      throw new UnavailableReservationException("Exceeded max reservation delay of 30 days");
+    }
 
     if ((roomMask & reservationMask) != 0) {
       throw new UnavailableReservationException("Unavailable time");
@@ -160,7 +279,7 @@ public class RoomService {
       throw new UnavailableReservationException("Already reserved");
     }
 
-    Reservation reservation = new Reservation(room.getId(), date, reservationMask);
+    Reservation reservation = new Reservation(room.getId(), userId, date, reservationMask);
     reservation = mongoTemplate.save(reservation, RESERVATIONS_COLLECTION);
 
     return reservation.getId();
@@ -193,6 +312,18 @@ public class RoomService {
         convertHourMaskToList(room.getUnavailabilityMasks().getSunday()));
   }
 
+  public ReservationParamsDto convertReservationToDto(Reservation reservation) {
+    Room room = getRoomById(reservation.getRoomId());
+    List<Integer> hours = convertHourMaskToList(reservation.getReservationMask());
+
+    String roomTitle = room.getRoomTitle();
+    String date = reservation.getDate().format(isoDateFormatter);
+    int startHour = hours.getFirst();
+    int endHour = hours.getLast();
+
+    return new ReservationParamsDto(roomTitle, date, startHour, endHour);
+  }
+
   public RoomDayRangeAvailabilityDto convertAvailabilityToDto(RoomDayRangeAvailability roomAvailability) {
     String roomTitle = roomAvailability.getRoomTitle();
     var dto = new RoomDayRangeAvailabilityDto(roomTitle);
@@ -200,7 +331,26 @@ public class RoomService {
     for (RoomDayRangeAvailability.Availability availability : roomAvailability.getAvailability()) {
       String date = availability.getDate().format(isoDateFormatter);
       List<Integer> hours = convertHourMaskToList(availability.getMask());
+      if (hours == null || hours.isEmpty()) {
+        continue;
+      }
       dto.availability().add(new RoomDayRangeAvailabilityDto.Availability(date, hours));
+    }
+
+    return dto;
+  }
+
+  public RoomsDayAvailabilityDto convertAvailabilityToDto(RoomsDayAvailability roomAvailability) {
+    String stringDate = roomAvailability.getDate().format(isoDateFormatter);
+    var dto = new RoomsDayAvailabilityDto(stringDate);
+
+    for (RoomsDayAvailability.Availability availability : roomAvailability.getAvailability()) {
+      String roomTitle = availability.getRoomTitle();
+      List<Integer> hours = convertHourMaskToList(availability.getMask());
+      if (hours == null || hours.isEmpty()) {
+        continue;
+      }
+      dto.availability().add(new RoomsDayAvailabilityDto.Availability(roomTitle, hours));
     }
 
     return dto;

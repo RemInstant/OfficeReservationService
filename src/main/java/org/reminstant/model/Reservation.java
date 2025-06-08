@@ -23,13 +23,16 @@ public class Reservation {
   @Indexed()
   private String roomId;
 
+  private Long userId;
+
   @Field(targetType = FieldType.STRING)
   private OffsetDateTime date;
 
-  private int reservationMask;
+  private Integer reservationMask;
 
-  public Reservation(String roomId, OffsetDateTime date, int reservationMask) {
+  public Reservation(String roomId, Long userId, OffsetDateTime date, Integer reservationMask) {
     this.roomId = roomId;
+    this.userId = userId;
     this.date = date;
     this.reservationMask = reservationMask;
   }

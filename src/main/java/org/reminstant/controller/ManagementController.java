@@ -26,9 +26,12 @@ public class ManagementController {
   }
 
   @GetMapping("api/management/rooms")
-  RoomsListDto getRooms() {
-    List<String> roomList = roomService.getRooms();
-    return new RoomsListDto(roomList);
+  ResponseEntity<Object> getRooms() {
+    List<String> roomList = roomService.getRoomTitles();
+
+    return ResponseEntity.ok()
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(new RoomsListDto(roomList));
   }
 
   @GetMapping("api/management/room")
