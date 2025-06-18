@@ -16,8 +16,6 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
-import java.util.List;
-
 @Configuration
 public class SecurityConfig {
 
@@ -54,36 +52,7 @@ public class SecurityConfig {
             .anyRequest().authenticated())
         .addFilterBefore(jwtAuthenticationFilter, BasicAuthenticationFilter.class)
         .build();
-
-//    DisableEncodeUrlFilter,
-//    WebAsyncManagerIntegrationFilter,
-//    SecurityContextHolderFilter,
-//    HeaderWriterFilter,
-//    LogoutFilter,
-//    JwtAuthenticationFilter,
-//    RequestCacheAwareFilter,
-//    SecurityContextHolderAwareRequestFilter,
-//    AnonymousAuthenticationFilter,
-//    SessionManagementFilter,
-//    ExceptionTranslationFilter,
-//    AuthorizationFilter
   }
-
-//  @Bean
-//  AuthenticationManager authManager(PasswordEncoder passwordEncoder,
-//                                    UserDetailsService userDetailsService,
-//                                    @Value("${admin-user-details.username}") String adminUsername,
-//                                    @Value("${admin-user-details.password}") String adminPassword) {
-//    DaoAuthenticationProvider mainProvider = new DaoAuthenticationProvider(passwordEncoder);
-//    mainProvider.setUserDetailsService(userDetailsService);
-//
-//    UserDetails adminUserDetails = new User(
-//        adminUsername, adminPassword, List.of(new SimpleGrantedAuthority("ADMIN")));
-//    DaoAuthenticationProvider adminProvider = new DaoAuthenticationProvider(passwordEncoder);
-//    adminProvider.setUserDetailsService(new InMemoryUserDetailsManager(adminUserDetails));
-//
-//    return new ProviderManager(mainProvider, adminProvider);
-//  }
 
   @Bean
   JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService,
