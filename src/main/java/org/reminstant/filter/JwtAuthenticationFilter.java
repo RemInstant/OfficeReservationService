@@ -11,24 +11,38 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken;
-import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-@Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   private static final String AUTHORIZATION_HEADER = "Authorization";
   private static final String AUTHORIZATION_PREFIX = "Bearer ";
+  private static final String ROLE_PREFIX = "ROLE_";
 
   private final JwtService jwtService;
   private final AuthenticationEntryPoint entryPoint;
+  private final AntPathMatcher pathMatcher;
+  private final Set<String> skipUris;
 
   public JwtAuthenticationFilter(JwtService jwtService, AuthenticationEntryPoint entryPoint) {
     this.jwtService = jwtService;
     this.entryPoint = entryPoint;
+    this.pathMatcher = new AntPathMatcher();
+    this.skipUris = new HashSet<>();
+  }
+
+  public void addSkipUri(String url) {
+    skipUris.add(url);
+  }
+
+  public void addSkipUris(String ...urls) {
+    skipUris.addAll(List.of(urls));
   }
 
   @Override
@@ -36,6 +50,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                   @NonNull HttpServletResponse response,
                                   @NonNull FilterChain filterChain)
       throws ServletException, IOException {
+    if (skipUris.stream().anyMatch(pattern -> pathMatcher.match(pattern, request.getRequestURI()))) {
+      filterChain.doFilter(request, response);
+      return;
+    }
+
     String tokenBearer = request.getHeader(AUTHORIZATION_HEADER);
 
     if (tokenBearer != null && tokenBearer.startsWith(AUTHORIZATION_PREFIX)) {
@@ -47,8 +66,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       }
 
       String username = jwtService.extractUsername(token);
+      String role = jwtService.extractRole(token);
+      String authority = ROLE_PREFIX + (role == null ? "USER" : role);
+
       PreAuthenticatedAuthenticationToken authToken = new PreAuthenticatedAuthenticationToken(
-          username, token, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+          username, token, List.of(new SimpleGrantedAuthority(authority)));
       SecurityContextHolder.getContext().setAuthentication(authToken);
     }
 

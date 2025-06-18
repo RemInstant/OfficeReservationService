@@ -1,6 +1,6 @@
 package org.reminstant.exception;
 
-public class OccupiedUsernameException extends Exception {
+public class OccupiedUsernameException extends RuntimeException {
   public OccupiedUsernameException() {
   }
 

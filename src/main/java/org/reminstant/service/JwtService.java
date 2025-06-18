@@ -1,5 +1,6 @@
 package org.reminstant.service;
 
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -51,5 +52,13 @@ public class JwtService {
 
   public String extractUsername(String token) {
     return jwtParser.parseSignedClaims(token).getPayload().getSubject();
+  }
+
+  public String extractRole(String token) {
+    try {
+      return jwtParser.parseSignedClaims(token).getPayload().get("Role", String.class);
+    } catch (JwtException ex) {
+      return null;
+    }
   }
 }

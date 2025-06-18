@@ -1,5 +1,6 @@
 package org.reminstant.controller;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -13,6 +14,7 @@ import java.time.Duration;
 
 @Slf4j
 @RestController
+@Hidden
 public class TestController {
 
   private final StringRedisTemplate redisTemplate;

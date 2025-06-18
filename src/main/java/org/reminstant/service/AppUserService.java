@@ -4,11 +4,13 @@ import org.reminstant.exception.InvalidCredentialsException;
 import org.reminstant.exception.OccupiedUsernameException;
 import org.reminstant.model.AppUser;
 import org.reminstant.repository.AppUserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,15 +20,29 @@ import java.util.Optional;
 public class AppUserService implements UserDetailsService {
 
   private final AppUserRepository appUserRepository;
-  private final BCryptPasswordEncoder passwordEncoder;
+  private final PasswordEncoder passwordEncoder;
 
-  public AppUserService(AppUserRepository appUserRepository, BCryptPasswordEncoder passwordEncoder) {
+  @Value("${admin-user-details.username}")
+  String adminUsername;
+  @Value("${admin-user-details.password}")
+  String adminPassword;
+
+
+  public AppUserService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder) {
     this.appUserRepository = appUserRepository;
     this.passwordEncoder = passwordEncoder;
   }
 
   @Override
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    if (username.equals(adminUsername)) {
+      return User.builder()
+          .username(adminUsername)
+          .password(adminPassword)
+          .roles("ADMIN")
+          .build();
+    }
+
     Optional<AppUser> user = appUserRepository.getAppUserByUsername(username);
 
     if (user.isEmpty()) {
@@ -43,14 +59,13 @@ public class AppUserService implements UserDetailsService {
   @Transactional
   public void registerUser(String username, String password)
       throws InvalidCredentialsException, OccupiedUsernameException {
-    if (username == null || username.length() < 4 ||
-        username.length() > 16 || !username.matches("\\w+")) {
-      throw new InvalidCredentialsException("Invalid username");
+    if (username == null) {
+      throw new InvalidCredentialsException("Username cannot be null");
     }
-    if (password == null || password.length() < 6) {
-      throw new InvalidCredentialsException("Invalid password");
+    if (password == null) {
+      throw new InvalidCredentialsException("Password cannot be null");
     }
-    if (appUserRepository.existsAppUserByUsername(username)) {
+    if (appUserRepository.existsAppUserByUsername(username) || username.equals(adminUsername)) {
       throw new OccupiedUsernameException("Username is occupied");
     }
 
@@ -58,18 +73,22 @@ public class AppUserService implements UserDetailsService {
     appUserRepository.save(new AppUser(username, encryptedPassword));
   }
 
-  public boolean verifyUser(String username, String password) {
-    if (username == null || password == null) {
+  public boolean verifyUser(AppUser user, String password) {
+    if (user == null || password == null) {
       return false;
     }
 
-    return appUserRepository
-        .getAppUserByUsername(username)
-        .filter(user -> passwordEncoder.matches(password, user.getPassword()))
-        .isPresent();
+    if (user.getUsername().equals(adminUsername)) {
+      return password.equals(adminPassword);
+    }
+
+    return passwordEncoder.matches(password, user.getPassword());
   }
 
   public AppUser getUser(String username) {
+    if (username.equals(adminUsername)) {
+      return new AppUser(null, adminUsername, adminPassword, "ADMIN");
+    }
     return appUserRepository.getAppUserByUsername(username).orElse(null);
   }
 }

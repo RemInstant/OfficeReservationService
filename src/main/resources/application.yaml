@@ -12,10 +12,39 @@ spring:
       database: reservation
       auto-index-creation: true
 
+springdoc:
+  api-docs:
+    resolve-schema-properties: true
+  cache:
+    disabled: true
+  swagger-ui:
+    show-common-extensions: true
+    tags-sorter: alpha
+
 token:
   signing:
     key: u9lsXL5gbjdOmm61oMv3vIcpa+YamfzA7QNNmIMurA11KRHBTRbGIo9kndtp/hSnVotaIEDkXyahEUMmrEjavA==
 
+admin-user-details:
+  username: admin
+  password: adminadmin
+
 api:
-  sign-up: '/api/auth/sign-up'
-  sign-in: '/api/auth/sign-in'
+  credentials:
+    sign-up: '/api/auth/sign-up'
+    sign-in: '/api/auth/sign-in'
+  service:
+    get-rooms: '/api/service/rooms'
+    get-available-reservations-by-room: '/api/service/reservation/available-by-room'
+    get-available-reservations-by-date: '/api/service/reservation/available-by-date'
+    get-your-reservations: '/api/service/reservations'
+    get-your-reservation-info: '/api/service/reservation'
+    reserve-room: '/api/service/reservation'
+  management:
+    mask: "/api/management/**"
+    get-rooms: '/api/management/rooms'
+    get-room: '/api/management/room'
+    add-room: '/api/management/room'
+    configure-room: '/api/management/room'
+    delete-room: 'api/management/room'
+

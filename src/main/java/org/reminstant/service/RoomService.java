@@ -100,7 +100,8 @@ public class RoomService {
 
 
   public RoomDayRangeAvailability getRoomAvailabilityPerDay(String roomTitle, String startStringDate,
-                                                            int dayCount) {
+                                                            int dayCount)
+      throws DateTimeParseException, RoomNotFoundException {
     OffsetDateTime now = OffsetDateTime.now();
     if (startStringDate == null) {
       startStringDate = now.format(isoDateFormatter);
@@ -163,7 +164,7 @@ public class RoomService {
     return roomAvailability;
   }
 
-  public RoomsDayAvailability getRoomsAvailabilityByDay(String stringDate) {
+  public RoomsDayAvailability getRoomsAvailabilityByDay(String stringDate) throws DateTimeParseException {
     Objects.requireNonNull(stringDate, "stringDate cannot be null");
 
     OffsetDateTime date = OffsetDateTime.parse(stringDate + "T00:00:00Z");
@@ -215,6 +216,7 @@ public class RoomService {
     return roomAvailability;
   }
 
+  // TODO: user not found exception?
   public List<String> getActualReservationIds(String username) {
     AppUser user = userService.getUser(username);
     Long userId = user == null ? null : user.getId();
@@ -230,7 +232,7 @@ public class RoomService {
     return reservations.stream().map(Reservation::getId).toList();
   }
 
-  public Reservation getReservationById(String username, String id) {
+  public Reservation getReservationById(String username, String id) throws ReservationNotFoundException {
     AppUser user = userService.getUser(username);
     Long userId = user == null ? null : user.getId();
 
@@ -334,7 +336,7 @@ public class RoomService {
       if (hours == null || hours.isEmpty()) {
         continue;
       }
-      dto.availability().add(new RoomDayRangeAvailabilityDto.Availability(date, hours));
+      dto.dateAvailability().add(new RoomDayRangeAvailabilityDto.DateAvailability(date, hours));
     }
 
     return dto;
@@ -350,7 +352,7 @@ public class RoomService {
       if (hours == null || hours.isEmpty()) {
         continue;
       }
-      dto.availability().add(new RoomsDayAvailabilityDto.Availability(roomTitle, hours));
+      dto.roomAvailability().add(new RoomsDayAvailabilityDto.RoomAvailability(roomTitle, hours));
     }
 
     return dto;

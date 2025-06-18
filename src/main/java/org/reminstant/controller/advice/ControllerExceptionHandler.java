@@ -4,8 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import org.reminstant.exception.RoomNotFoundException;
-import org.reminstant.exception.UnavailableReservationException;
+import org.reminstant.exception.*;
 import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.*;
@@ -62,6 +61,25 @@ public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
     return buildResponse(HttpStatus.BAD_REQUEST, null, URI.create(path), builder.toString());
   }
 
+  @ExceptionHandler(InvalidCredentialsException.class)
+  public ResponseEntity<Object> handleInvalidCredentialsException(InvalidCredentialsException ex,
+                                                                  HttpServletRequest request) {
+    return buildResponse(HttpStatus.BAD_REQUEST, null,
+        URI.create(request.getRequestURI()), ex.getMessage());
+  }
+
+  @ExceptionHandler(OccupiedUsernameException.class)
+  public ResponseEntity<Object> handleOccupiedUsernameException(HttpServletRequest request) {
+    return buildResponse(HttpStatus.CONFLICT, null,
+        URI.create(request.getRequestURI()), "Login is occupied");
+  }
+
+  @ExceptionHandler(AlreadyAuthorizedException.class)
+  public ResponseEntity<Object> handleAlreadyAuthorizedException(HttpServletRequest request) {
+    return buildResponse(HttpStatus.BAD_REQUEST, null,
+        URI.create(request.getRequestURI()), "Already authorized users cannot authorize");
+  }
+
   @ExceptionHandler(DuplicateKeyException.class)
   public ResponseEntity<Object> handleDuplicateKeyException(HttpServletRequest request) {
     return buildResponse(HttpStatus.CONFLICT, null,
@@ -72,6 +90,14 @@ public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
   public ResponseEntity<Object> handleRoomNotFoundException(RoomNotFoundException ex,
                                                             HttpServletRequest request) {
     String detail = "No room with %s '%s'".formatted(ex.getRoomKey(), ex.getRoomValue());
+    return buildResponse(HttpStatus.NOT_FOUND, null,
+        URI.create(request.getRequestURI()), detail);
+  }
+
+  @ExceptionHandler(ReservationNotFoundException.class)
+  public ResponseEntity<Object> handleReservationNotFoundException(ReservationNotFoundException ex,
+                                                                   HttpServletRequest request) {
+    String detail = "No reservation with id '%s'".formatted(ex.getReservationId());
     return buildResponse(HttpStatus.NOT_FOUND, null,
         URI.create(request.getRequestURI()), detail);
   }
