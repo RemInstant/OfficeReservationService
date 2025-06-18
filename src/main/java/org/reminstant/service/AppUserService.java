@@ -85,10 +85,24 @@ public class AppUserService implements UserDetailsService {
     return passwordEncoder.matches(password, user.getPassword());
   }
 
-  public AppUser getUser(String username) {
+  public AppUser getUser(String username) throws UsernameNotFoundException {
     if (username.equals(adminUsername)) {
-      return new AppUser(null, adminUsername, adminPassword, "ADMIN");
+      return new AppUser(adminUsername, adminPassword, "ADMIN");
     }
-    return appUserRepository.getAppUserByUsername(username).orElse(null);
+    return appUserRepository
+        .getAppUserByUsername(username)
+        .orElseThrow(() -> new UsernameNotFoundException("No user with username '%s'".formatted(username)));
+  }
+
+  @Transactional
+  public long incrementUserTokenVersion(String username) throws UsernameNotFoundException {
+    AppUser user = getUser(username);
+    Long tokenVersion = user.getTokenVersion();
+    if (tokenVersion == null) {
+      tokenVersion = 0L;
+    }
+    user.setTokenVersion(tokenVersion + 1);
+    appUserRepository.save(user);
+    return user.getTokenVersion();
   }
 }

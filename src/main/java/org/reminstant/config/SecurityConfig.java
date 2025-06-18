@@ -7,19 +7,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
@@ -38,6 +30,8 @@ public class SecurityConfig {
   private String signUpUri;
   @Value("${api.credentials.sign-in}")
   private String signInUri;
+  @Value("${api.credentials.refresh-token}")
+  private String refreshTokenUri;
   @Value("${api.management.mask}")
   private String managementUriMask;
 
@@ -55,6 +49,7 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.GET, swaggerUrls).permitAll()
             .requestMatchers(HttpMethod.POST, signUpUri).permitAll()
             .requestMatchers(HttpMethod.POST, signInUri).permitAll()
+            .requestMatchers(HttpMethod.POST, refreshTokenUri).permitAll()
             .requestMatchers(managementUriMask).hasRole("ADMIN")
             .anyRequest().authenticated())
         .addFilterBefore(jwtAuthenticationFilter, BasicAuthenticationFilter.class)
@@ -97,6 +92,7 @@ public class SecurityConfig {
     filter.addSkipUris(swaggerUrls);
     filter.addSkipUris(signUpUri);
     filter.addSkipUri(signInUri);
+    filter.addSkipUri(refreshTokenUri);
     return filter;
   }
 

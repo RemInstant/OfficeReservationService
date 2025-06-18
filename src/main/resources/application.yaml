@@ -24,6 +24,9 @@ springdoc:
 token:
   signing:
     key: u9lsXL5gbjdOmm61oMv3vIcpa+YamfzA7QNNmIMurA11KRHBTRbGIo9kndtp/hSnVotaIEDkXyahEUMmrEjavA==
+  ttl:
+    access: 300    # 5 min
+    refresh: 86400 # 1 day
 
 admin-user-details:
   username: admin
@@ -33,6 +36,8 @@ api:
   credentials:
     sign-up: '/api/auth/sign-up'
     sign-in: '/api/auth/sign-in'
+    sign-out: '/api/auth/sign-out'
+    refresh-token: '/api/auth/refresh'
   service:
     get-rooms: '/api/service/rooms'
     get-available-reservations-by-room: '/api/service/reservation/available-by-room'

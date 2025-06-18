@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.*;
 import org.springframework.lang.NonNull;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -78,6 +79,13 @@ public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
   public ResponseEntity<Object> handleAlreadyAuthorizedException(HttpServletRequest request) {
     return buildResponse(HttpStatus.BAD_REQUEST, null,
         URI.create(request.getRequestURI()), "Already authorized users cannot authorize");
+  }
+
+  @ExceptionHandler(BadCredentialsException.class)
+  public ResponseEntity<Object> handleBadCredentialsException(BadCredentialsException ex,
+                                                              HttpServletRequest request) {
+    return buildResponse(HttpStatus.FORBIDDEN, null,
+        URI.create(request.getRequestURI()), ex.getMessage());
   }
 
   @ExceptionHandler(DuplicateKeyException.class)

@@ -1,5 +1,6 @@
 package org.reminstant.filter;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -60,14 +61,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     if (tokenBearer != null && tokenBearer.startsWith(AUTHORIZATION_PREFIX)) {
       String token = tokenBearer.substring(AUTHORIZATION_PREFIX.length());
 
-      if (!jwtService.isTokenValid(token)) {
+      if (jwtService.isAccessTokenInvalid(token)) {
         entryPoint.commence(request, response, new BadCredentialsException("Bad credentials"));
         return;
       }
 
-      String username = jwtService.extractUsername(token);
-      String role = jwtService.extractRole(token);
-      String authority = ROLE_PREFIX + (role == null ? "USER" : role);
+      String username;
+      String authority;
+      try {
+        username = jwtService.extractUsername(token);
+        authority = ROLE_PREFIX + jwtService.extractRole(token);
+      } catch (JwtException ex) {
+        entryPoint.commence(request, response, new BadCredentialsException("Bad credentials", ex));
+        return;
+      }
 
       PreAuthenticatedAuthenticationToken authToken = new PreAuthenticatedAuthenticationToken(
           username, token, List.of(new SimpleGrantedAuthority(authority)));

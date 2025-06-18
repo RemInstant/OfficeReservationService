@@ -47,7 +47,7 @@ public class ReservationServiceController {
       @ApiResponse(responseCode = "200", description = "OK", content = @Content(
           schema = @Schema(implementation = RoomsListDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE)),
-      @ApiResponse(responseCode = "401", description = "Неверные учётные данные", content = @Content),
+      @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
       @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content)
   })
   RoomsListDto getRooms() {
@@ -64,7 +64,7 @@ public class ReservationServiceController {
       @ApiResponse(responseCode = "400", description = "Помещение не найдено / Невалидные данные", content = @Content(
           schema = @Schema(implementation = ProblemDetailDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE)),
-      @ApiResponse(responseCode = "401", description = "Неверные учётные данные", content = @Content),
+      @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
       @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content)
   })
   RoomDayRangeAvailabilityDto getAvailByRoom(
@@ -91,7 +91,7 @@ public class ReservationServiceController {
       @ApiResponse(responseCode = "400", description = "Невалидные данные", content = @Content(
           schema = @Schema(implementation = ProblemDetailDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE)),
-      @ApiResponse(responseCode = "401", description = "Неверные учётные данные", content = @Content),
+      @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
       @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content)
   })
   RoomsDayAvailabilityDto getAvailByDate(
@@ -108,7 +108,7 @@ public class ReservationServiceController {
       @ApiResponse(responseCode = "200", description = "OK", content = @Content(
           schema = @Schema(implementation = ReservationsListDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE)),
-      @ApiResponse(responseCode = "401", description = "Неверные учётные данные", content = @Content),
+      @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
       @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content)
   })
   ReservationsListDto getReservations(Principal principal) {
@@ -125,7 +125,7 @@ public class ReservationServiceController {
       @ApiResponse(responseCode = "200", description = "OK", content = @Content(
           schema = @Schema(implementation = ReservationParamsDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE)),
-      @ApiResponse(responseCode = "401", description = "Неверные учётные данные", content = @Content),
+      @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
       @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content),
       @ApiResponse(responseCode = "404", description = "Бронь не найдена", content = @Content(
           schema = @Schema(implementation = ProblemDetailDto.class),
@@ -151,7 +151,7 @@ public class ReservationServiceController {
       @ApiResponse(responseCode = "400", description = "Выбранное время уже забронировано / Невалидные данные", content = @Content(
           schema = @Schema(implementation = ProblemDetailDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE)),
-      @ApiResponse(responseCode = "401", description = "Неверные учётные данные", content = @Content),
+      @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
       @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content),
       @ApiResponse(responseCode = "404", description = "Помещение не найдено", content = @Content(
           schema = @Schema(implementation = ProblemDetailDto.class),
@@ -170,7 +170,7 @@ public class ReservationServiceController {
   @Operation(summary = "Отмена брони помещения")
   @ApiResponses(value = {
       @ApiResponse(responseCode = "204", description = "OK", content = @Content),
-      @ApiResponse(responseCode = "401", description = "Неверные учётные данные", content = @Content),
+      @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
       @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content),
       @ApiResponse(responseCode = "404", description = "Бронь не найдена", content = @Content(
           schema = @Schema(implementation = ProblemDetailDto.class),
