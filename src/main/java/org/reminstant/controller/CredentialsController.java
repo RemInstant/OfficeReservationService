@@ -115,7 +115,7 @@ public class CredentialsController {
   })
   ResponseEntity<Object> refreshToken(@RequestBody JwtTokenDto data) {
     if (jwtService.isRefreshTokenInvalid(data.refreshToken())) {
-      throw new BadCredentialsException("Invalid refresh token");
+      throw new InvalidCredentialsException("Invalid refresh token");
     }
 
     String username;
@@ -124,9 +124,8 @@ public class CredentialsController {
       username = jwtService.extractUsername(data.refreshToken());
       role = jwtService.extractRole(data.refreshToken());
     } catch (JwtException ex) {
-      throw new BadCredentialsException("Invalid refresh token");
+      throw new InvalidCredentialsException("Invalid refresh token");
     }
-
 
     jwtService.blacklistToken(data.accessToken(), Duration.ofSeconds(accessTokenTTL));
 

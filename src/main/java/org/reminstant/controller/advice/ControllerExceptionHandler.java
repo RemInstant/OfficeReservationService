@@ -81,13 +81,6 @@ public class ControllerExceptionHandler extends ResponseEntityExceptionHandler {
         URI.create(request.getRequestURI()), "Already authorized users cannot authorize");
   }
 
-  @ExceptionHandler(BadCredentialsException.class)
-  public ResponseEntity<Object> handleBadCredentialsException(BadCredentialsException ex,
-                                                              HttpServletRequest request) {
-    return buildResponse(HttpStatus.FORBIDDEN, null,
-        URI.create(request.getRequestURI()), ex.getMessage());
-  }
-
   @ExceptionHandler(DuplicateKeyException.class)
   public ResponseEntity<Object> handleDuplicateKeyException(HttpServletRequest request) {
     return buildResponse(HttpStatus.CONFLICT, null,
