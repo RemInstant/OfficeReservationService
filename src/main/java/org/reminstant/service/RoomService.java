@@ -89,9 +89,13 @@ public class RoomService {
   }
 
   public void deleteRoom(String roomTitle) throws RoomNotFoundException {
-    Query query = new Query(Criteria.where("roomTitle").is(roomTitle));
+    Room room = getRoom(roomTitle);
 
-    DeleteResult result = mongoTemplate.remove(query, ROOMS_COLLECTION);
+    Query reservationQuery = new Query(Criteria.where("roomId").is(room.getId()));
+    mongoTemplate.remove(reservationQuery, Reservation.class, RESERVATIONS_COLLECTION);
+
+    Query roomQuery = new Query(Criteria.where("roomTitle").is(roomTitle));
+    DeleteResult result = mongoTemplate.remove(roomQuery, ROOMS_COLLECTION);
     if (result.getDeletedCount() == 0) {
       throw new RoomNotFoundException("title", roomTitle);
     }
