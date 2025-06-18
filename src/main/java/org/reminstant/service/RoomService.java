@@ -287,6 +287,19 @@ public class RoomService {
     return reservation.getId();
   }
 
+  public void cancelReservation(String username, String id) throws ReservationNotFoundException {
+    AppUser user = userService.getUser(username);
+    Long userId = user == null ? null : user.getId();
+
+    Query query = new Query(Criteria
+        .where("userId").is(userId)
+        .and("_id").is(id));
+    DeleteResult result = mongoTemplate.remove(query, Reservation.class, RESERVATIONS_COLLECTION);
+    if (result.getDeletedCount() == 0) {
+      throw new ReservationNotFoundException(id);
+    }
+  }
+
 
 
   public Room getRoomFromDto(RoomDto dto) {

@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
 import org.reminstant.dto.http.response.*;
 import org.reminstant.dto.http.request.ReservationRequestDto;
@@ -19,6 +20,7 @@ import org.reminstant.model.RoomDayRangeAvailability;
 import org.reminstant.model.RoomsDayAvailability;
 import org.reminstant.service.RoomService;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -162,5 +164,27 @@ public class ReservationServiceController {
     String id = roomService.reserveRoom(username, dto.roomTitle(), dto.date(), dto.startHour(), dto.endHour());
 
     return new ReservationIdDto(id);
+  }
+
+  @DeleteMapping("${api.service.cancel-reservation}")
+  @Operation(summary = "Отмена брони помещения")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "204", description = "OK", content = @Content),
+      @ApiResponse(responseCode = "401", description = "Неверные учётные данные", content = @Content),
+      @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content),
+      @ApiResponse(responseCode = "404", description = "Бронь не найдена", content = @Content(
+          schema = @Schema(implementation = ProblemDetailDto.class),
+          mediaType = MediaType.APPLICATION_JSON_VALUE))
+  })
+  ResponseEntity<Object> reserveRoom(
+      @RequestParam @Size(min = 24, max = 24)
+      @Parameter(description = "Идентификатор брони")
+      String reservationId,
+      Principal principal) {
+    Objects.requireNonNull(principal, "Principal must be non-null");
+    String username = principal.getName();
+    roomService.cancelReservation(username, reservationId);
+
+    return ResponseEntity.noContent().build();
   }
 }

@@ -40,6 +40,7 @@ api:
     get-your-reservations: '/api/service/reservations'
     get-your-reservation-info: '/api/service/reservation'
     reserve-room: '/api/service/reservation'
+    cancel-reservation: '/api/service/reservation'
   management:
     mask: "/api/management/**"
     get-rooms: '/api/management/rooms'
