@@ -1,10 +1,13 @@
 package org.reminstant.service;
 
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.reminstant.exception.InvalidCredentialsException;
 import org.reminstant.exception.OccupiedUsernameException;
 import org.reminstant.model.AppUser;
 import org.reminstant.repository.AppUserRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -15,33 +18,43 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class AppUserService implements UserDetailsService {
 
   private final AppUserRepository appUserRepository;
   private final PasswordEncoder passwordEncoder;
+  private final JdbcTemplate jdbcTemplate;
 
   @Value("${admin-user-details.username}")
-  String adminUsername;
+  private String adminUsername;
   @Value("${admin-user-details.password}")
-  String adminPassword;
+  private String adminPassword;
 
-
-  public AppUserService(AppUserRepository appUserRepository, PasswordEncoder passwordEncoder) {
+  public AppUserService(AppUserRepository appUserRepository,
+                        PasswordEncoder passwordEncoder,
+                        JdbcTemplate jdbcTemplate) {
     this.appUserRepository = appUserRepository;
     this.passwordEncoder = passwordEncoder;
+    this.jdbcTemplate = jdbcTemplate;
   }
+
+  @PostConstruct
+  @Transactional
+  public void initAdminUser() {
+    String sql = "INSERT INTO app_user (username, password, role) VALUES (?, ?, ?)";
+    String encodedPassword = passwordEncoder.encode(adminPassword);
+
+    try {
+      jdbcTemplate.update(sql, adminUsername, encodedPassword, "ADMIN");
+    } catch (Exception ex) {
+      // already registered
+    }
+  }
+
 
   @Override
   public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-    if (username.equals(adminUsername)) {
-      return User.builder()
-          .username(adminUsername)
-          .password(adminPassword)
-          .roles("ADMIN")
-          .build();
-    }
-
     Optional<AppUser> user = appUserRepository.getAppUserByUsername(username);
 
     if (user.isEmpty()) {
@@ -56,7 +69,7 @@ public class AppUserService implements UserDetailsService {
   }
 
   @Transactional
-  public void registerUser(String username, String password)
+  public void registerUser(String username, String password, String role)
       throws InvalidCredentialsException, OccupiedUsernameException {
     if (username == null) {
       throw new InvalidCredentialsException("Username cannot be null");
@@ -64,12 +77,12 @@ public class AppUserService implements UserDetailsService {
     if (password == null) {
       throw new InvalidCredentialsException("Password cannot be null");
     }
-    if (appUserRepository.existsAppUserByUsername(username) || username.equals(adminUsername)) {
+    if (appUserRepository.existsAppUserByUsername(username)) {
       throw new OccupiedUsernameException("Username is occupied");
     }
 
-    String encryptedPassword = passwordEncoder.encode(password);
-    appUserRepository.save(new AppUser(username, encryptedPassword));
+    String encodedPassword = passwordEncoder.encode(password);
+    appUserRepository.save(new AppUser(username, encodedPassword, role));
   }
 
   public boolean verifyUser(AppUser user, String password) {
@@ -77,17 +90,10 @@ public class AppUserService implements UserDetailsService {
       return false;
     }
 
-    if (user.getUsername().equals(adminUsername)) {
-      return password.equals(adminPassword);
-    }
-
     return passwordEncoder.matches(password, user.getPassword());
   }
 
   public AppUser getUser(String username) throws UsernameNotFoundException {
-    if (username.equals(adminUsername)) {
-      return new AppUser(adminUsername, adminPassword, "ADMIN");
-    }
     return appUserRepository
         .getAppUserByUsername(username)
         .orElseThrow(() -> new UsernameNotFoundException("No user with username '%s'".formatted(username)));

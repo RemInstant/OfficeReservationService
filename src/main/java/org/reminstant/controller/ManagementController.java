@@ -11,9 +11,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
+import org.reminstant.dto.http.common.CommonUnavailableDaysDto;
 import org.reminstant.dto.http.common.RoomDto;
 import org.reminstant.dto.http.response.ProblemDetailDto;
 import org.reminstant.dto.http.response.RoomsListDto;
+import org.reminstant.model.CommonUnavailableDays;
 import org.reminstant.model.Room;
 import org.reminstant.service.RoomService;
 import org.springframework.http.MediaType;
@@ -60,7 +62,7 @@ public class ManagementController {
           schema = @Schema(implementation = ProblemDetailDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE)),
       @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
-      @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content),
+      @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация / нет прав)", content = @Content),
       @ApiResponse(responseCode = "404", description = "Помещение не найдено", content = @Content(
           schema = @Schema(implementation = ProblemDetailDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE))
@@ -81,7 +83,7 @@ public class ManagementController {
           schema = @Schema(implementation = ProblemDetailDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE)),
       @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
-      @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content)
+      @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация / нет прав)", content = @Content)
   })
   ResponseEntity<Object> addRoom(@Valid @RequestBody RoomDto dto) {
     Room room = roomService.getRoomFromDto(dto);
@@ -98,7 +100,7 @@ public class ManagementController {
           schema = @Schema(implementation = ProblemDetailDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE)),
       @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
-      @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content),
+      @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация / нет прав)", content = @Content),
       @ApiResponse(responseCode = "404", description = "Помещение не найдено", content = @Content(
           schema = @Schema(implementation = ProblemDetailDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE))
@@ -118,7 +120,7 @@ public class ManagementController {
           schema = @Schema(implementation = ProblemDetailDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE)),
       @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
-      @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация)", content = @Content),
+      @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация / нет прав)", content = @Content),
       @ApiResponse(responseCode = "404", description = "Помещение не найдено", content = @Content(
           schema = @Schema(implementation = ProblemDetailDto.class),
           mediaType = MediaType.APPLICATION_JSON_VALUE))
@@ -128,6 +130,39 @@ public class ManagementController {
       @Parameter(description = "Идентификатор помещения")
       String roomTitle) {
     roomService.deleteRoom(roomTitle);
+    return ResponseEntity.noContent().build();
+  }
+
+
+
+  @GetMapping("${api.management.get-common-unavailable}")
+  @Operation(summary = "Получение общего времени, не доступного для бронирования")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "OK", content = @Content(
+          schema = @Schema(implementation = CommonUnavailableDaysDto.class),
+          mediaType = MediaType.APPLICATION_JSON_VALUE)),
+      @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
+      @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация / нет прав)", content = @Content)
+  })
+  CommonUnavailableDaysDto getCommonUnavailableDays() {
+    CommonUnavailableDays unavailable = roomService.getCommonUnavailableDays();
+    return roomService.convertCommonUnavailableDaysToDto(unavailable);
+  }
+  
+  @PutMapping("${api.management.update-common-unavailable}")
+  @Operation(summary = "Изменение общего времени, не доступного для бронирования")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "204", description = "OK", content = @Content),
+      @ApiResponse(responseCode = "400", description = "Невалидные данные", content = @Content(
+          schema = @Schema(implementation = ProblemDetailDto.class),
+          mediaType = MediaType.APPLICATION_JSON_VALUE)),
+      @ApiResponse(responseCode = "401", description = "Невалидный/истёкший токен доступа", content = @Content),
+      @ApiResponse(responseCode = "403", description = "Нет доступа (отсутствует авторизация / нет прав)", content = @Content)
+  })
+  ResponseEntity<Object> updateCommonUnavailableDays(@Valid @RequestBody CommonUnavailableDaysDto dto) {
+    CommonUnavailableDays unavailable = roomService.getCommonUnavailableDaysFromDto(dto);
+    roomService.setCommonUnavailableDays(unavailable);
+
     return ResponseEntity.noContent().build();
   }
 }

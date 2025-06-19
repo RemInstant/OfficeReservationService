@@ -20,6 +20,7 @@ import org.reminstant.service.JwtService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -54,7 +55,7 @@ public class CredentialsController {
           mediaType = MediaType.APPLICATION_JSON_VALUE))
   })
   ResponseEntity<Object> signUp(@Valid @RequestBody UsernamePasswordDto data) {
-    appUserService.registerUser(data.username(), data.password());
+    appUserService.registerUser(data.username(), data.password(), "USER");
 
     return ResponseEntity.noContent().build();
   }
@@ -74,7 +75,12 @@ public class CredentialsController {
       throw new AlreadyAuthorizedException();
     }
 
-    AppUser user = appUserService.getUser(data.username());
+    AppUser user;
+    try {
+      user = appUserService.getUser(data.username());
+    } catch (UsernameNotFoundException ex) {
+      throw new InvalidCredentialsException("Invalid credentials", ex);
+    }
 
     if (!appUserService.verifyUser(user, data.password())) {
       throw new InvalidCredentialsException("Invalid credentials");

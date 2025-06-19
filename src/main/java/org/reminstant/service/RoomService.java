@@ -4,6 +4,7 @@ import com.mongodb.DuplicateKeyException;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import lombok.extern.slf4j.Slf4j;
+import org.reminstant.dto.http.common.CommonUnavailableDaysDto;
 import org.reminstant.dto.http.common.RoomDto;
 import org.reminstant.dto.http.response.ReservationParamsDto;
 import org.reminstant.dto.http.response.RoomDayRangeAvailabilityDto;
@@ -31,6 +32,7 @@ import java.util.*;
 public class RoomService {
 
   private static final String ROOMS_COLLECTION = "rooms";
+  private static final String COMMMON_CONFIG_COLLECTION = "config";
   private static final String RESERVATIONS_COLLECTION = "reservations";
 
   private final MongoTemplate mongoTemplate;
@@ -103,6 +105,19 @@ public class RoomService {
 
 
 
+  public CommonUnavailableDays getCommonUnavailableDays() {
+    Query query = new Query(Criteria.where("configName").is(CommonUnavailableDays.CONFIG_NAME));
+    var configs = mongoTemplate.find(query, CommonUnavailableDays.class, COMMMON_CONFIG_COLLECTION);
+    Optional<CommonUnavailableDays> config = configs.stream().findFirst();
+    return config.orElse(new CommonUnavailableDays());
+  }
+
+  public void setCommonUnavailableDays(CommonUnavailableDays unavailable) {
+    mongoTemplate.save(unavailable, COMMMON_CONFIG_COLLECTION);
+  }
+
+
+
   public RoomDayRangeAvailability getRoomAvailabilityPerDay(String roomTitle, String startStringDate,
                                                             int dayCount)
       throws DateTimeParseException, RoomNotFoundException {
@@ -114,6 +129,7 @@ public class RoomService {
     OffsetDateTime startDate = OffsetDateTime.parse(startStringDate + "T00:00:00Z");
     OffsetDateTime endDate = startDate.plus(Duration.ofDays(dayCount));
     Room room = getRoom(roomTitle);
+    CommonUnavailableDays commonUnavailability = getCommonUnavailableDays();
     var roomAvailability = new RoomDayRangeAvailability(room.getId(), roomTitle);
 
     if (startDate.plus(Duration.ofDays(1)).isBefore(now)) {
@@ -159,8 +175,9 @@ public class RoomService {
         }
       }
       int roomMask = getRoomMask(room, date);
+      int commonMask = getCommonMask(commonUnavailability, date);
       int reservationMask = reservationMasks.getOrDefault(date, 0);
-      int availableMask = ~(roomMask | reservationMask | passedHoursMask);
+      int availableMask = ~(roomMask | commonMask | reservationMask | passedHoursMask);
       var avail = new RoomDayRangeAvailability.Availability(date, availableMask);
       roomAvailability.getAvailability().add(avail);
     }
@@ -173,6 +190,7 @@ public class RoomService {
 
     OffsetDateTime date = OffsetDateTime.parse(stringDate + "T00:00:00Z");
     List<Room> rooms = getRooms();
+    CommonUnavailableDays commonUnavailability = getCommonUnavailableDays();
     int passedHoursMask = 0;
     var roomAvailability = new RoomsDayAvailability(date);
 
@@ -209,10 +227,11 @@ public class RoomService {
       reservationMasks.put(dto.getRoomId(), reservationMask);
     }
 
+    int commonMask = getCommonMask(commonUnavailability, date);
     for (Room room : rooms) {
       int roomMask = getRoomMask(room, date);
       int reservationMask = reservationMasks.getOrDefault(room.getId(), 0);
-      int availableMask = ~(roomMask | reservationMask | passedHoursMask);
+      int availableMask = ~(roomMask | commonMask | reservationMask | passedHoursMask);
       var avail = new RoomsDayAvailability.Availability(room.getId(), room.getRoomTitle(), availableMask);
       roomAvailability.getAvailability().add(avail);
     }
@@ -257,9 +276,11 @@ public class RoomService {
                             int startHour, int endHour)
       throws DateTimeParseException, RoomNotFoundException, UnavailableReservationException {
     OffsetDateTime date = OffsetDateTime.parse(dateString + "T00:00:00Z");
-    int reservationMask = convertHourRangeToMask(startHour, endHour);
     Room room = getRoom(roomTitle);
+    CommonUnavailableDays commonUnavailability = getCommonUnavailableDays();
     int roomMask = getRoomMask(room, date);
+    int commonMask = getCommonMask(commonUnavailability, date);
+    int reservationMask = convertHourRangeToMask(startHour, endHour);
     AppUser user = userService.getUser(username);
     Long userId = user == null ? null : user.getId();
 
@@ -267,7 +288,7 @@ public class RoomService {
       throw new UnavailableReservationException("Exceeded max reservation delay of 30 days");
     }
 
-    if ((roomMask & reservationMask) != 0) {
+    if (((roomMask | commonMask) & reservationMask) != 0) {
       throw new UnavailableReservationException("Unavailable time");
     }
 
@@ -319,6 +340,19 @@ public class RoomService {
     return room;
   }
 
+  public CommonUnavailableDays getCommonUnavailableDaysFromDto(CommonUnavailableDaysDto dto) {
+    CommonUnavailableDays unavailable = new CommonUnavailableDays();
+    unavailable.setMonday(convertHourListToMask(dto.mondayUnavailable()));
+    unavailable.setTuesday(convertHourListToMask(dto.tuesdayUnavailable()));
+    unavailable.setThursday(convertHourListToMask(dto.thursdayUnavailable()));
+    unavailable.setWednesday(convertHourListToMask(dto.wednesdayUnavailable()));
+    unavailable.setFriday(convertHourListToMask(dto.fridayUnavailable()));
+    unavailable.setSaturday(convertHourListToMask(dto.saturdayUnavailable()));
+    unavailable.setSunday(convertHourListToMask(dto.sundayUnavailable()));
+
+    return unavailable;
+  }
+
   public RoomDto convertRoomToDto(Room room) {
     return new RoomDto(
         room.getRoomTitle(),
@@ -329,6 +363,17 @@ public class RoomService {
         convertHourMaskToList(room.getUnavailabilityMasks().getFriday()),
         convertHourMaskToList(room.getUnavailabilityMasks().getSaturday()),
         convertHourMaskToList(room.getUnavailabilityMasks().getSunday()));
+  }
+
+  public CommonUnavailableDaysDto convertCommonUnavailableDaysToDto(CommonUnavailableDays unavailable) {
+    return new CommonUnavailableDaysDto(
+        convertHourMaskToList(unavailable.getMonday()),
+        convertHourMaskToList(unavailable.getTuesday()),
+        convertHourMaskToList(unavailable.getWednesday()),
+        convertHourMaskToList(unavailable.getThursday()),
+        convertHourMaskToList(unavailable.getFriday()),
+        convertHourMaskToList(unavailable.getSaturday()),
+        convertHourMaskToList(unavailable.getSunday()));
   }
 
   public ReservationParamsDto convertReservationToDto(Reservation reservation) {
@@ -389,6 +434,20 @@ public class RoomService {
     };
 
     return roomMask != null ? roomMask : 0;
+  }
+
+  private int getCommonMask(CommonUnavailableDays unavailable, OffsetDateTime date) {
+    Integer commonMask = switch (date.getDayOfWeek()) {
+      case MONDAY -> unavailable.getMonday();
+      case TUESDAY -> unavailable.getTuesday();
+      case WEDNESDAY -> unavailable.getWednesday();
+      case THURSDAY -> unavailable.getThursday();
+      case FRIDAY -> unavailable.getFriday();
+      case SATURDAY -> unavailable.getSaturday();
+      case SUNDAY -> unavailable.getSunday();
+    };
+
+    return commonMask != null ? commonMask : 0;
   }
 
   private Integer convertHourListToMask(List<Integer> hours) {

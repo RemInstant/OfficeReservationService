@@ -72,7 +72,7 @@ public class ReservationServiceController {
       @Parameter(description = "Идентификатор помещения")
       String roomTitle,
       @RequestParam(required = false)
-      @Parameter(description = "Начало диапазона поиска (null == сегодняшний день)")
+      @Parameter(description = "Начало диапазона поиска, null == сегодняшний день (ISO 8601)", example = "2025-12-25")
       String startDate,
       @RequestParam(defaultValue = "7") @Min(1) @Max(30)
       @Parameter(description = "Ширина диапазона в днях")
@@ -96,7 +96,7 @@ public class ReservationServiceController {
   })
   RoomsDayAvailabilityDto getAvailByDate(
       @RequestParam
-      @Parameter(description = "Дата бронирования")
+      @Parameter(description = "Дата бронирования (ISO 8601)", example = "2025-12-25")
       String date) {
     RoomsDayAvailability avail = roomService.getRoomsAvailabilityByDay(date);
     return roomService.convertAvailabilityToDto(avail);

@@ -53,4 +53,6 @@ api:
     add-room: '/api/management/room'
     configure-room: '/api/management/room'
     delete-room: 'api/management/room'
+    get-common-unavailable: 'api/management/common-unavailable'
+    update-common-unavailable: 'api/management/common-unavailable'
 

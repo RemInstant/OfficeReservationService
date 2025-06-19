@@ -1,7 +1,9 @@
 package org.reminstant.config;
 
+import org.reminstant.exception.OccupiedUsernameException;
 import org.reminstant.filter.CustomAuthenticationEntryPoint;
 import org.reminstant.filter.JwtAuthenticationFilter;
+import org.reminstant.service.AppUserService;
 import org.reminstant.service.JwtService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
